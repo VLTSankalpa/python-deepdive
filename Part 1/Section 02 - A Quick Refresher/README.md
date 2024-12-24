@@ -318,74 +318,6 @@ To help maintain PEP 8 compliance, you can use tools like:
 - black: An automatic code formatter that enforces PEP 8 style
 - autopep8: Another tool that automatically formats code to follow PEP 8
 
-# "special methods" or "magic methods" system
-
-
-When you write `x < y`, Python actually converts this into a method call `x.__lt__(y)`. The `__lt__` is a special method name that stands for "less than". This is part of Python's data model that allows objects to define how they behave with various operators.
-
-Let's break this down with a practical example:
-
-```python
-class Temperature:
-    def __init__(self, celsius):
-        self.celsius = celsius
-    
-    def __lt__(self, other):
-        # This method is called when we use < operator
-        print(f"Comparing {self.celsius}°C with {other.celsius}°C")
-        return self.celsius < other.celsius
-
-# Creating two temperature objects
-temp1 = Temperature(20)
-temp2 = Temperature(25)
-
-# These two lines do exactly the same thing:
-result1 = temp1 < temp2           # Using the < operator
-result2 = temp1.__lt__(temp2)     # Direct method call
-```
-
-This system is part of a broader concept in Python called "operator overloading," where there's a whole family of special methods for different operators:
-
-```python
-# Common comparison operators and their method equivalents
-x < y    →   x.__lt__(y)      # less than
-x <= y   →   x.__le__(y)      # less than or equal to
-x == y   →   x.__eq__(y)      # equal to
-x != y   →   x.__ne__(y)      # not equal to
-x > y    →   x.__gt__(y)      # greater than
-x >= y   →   x.__ge__(y)      # greater than or equal to
-```
-
-The beauty of this system is that it allows you to define how your custom objects should behave with standard Python operators. For example, if you're creating a class to represent money:
-
-```python
-class Money:
-    def __init__(self, amount, currency):
-        self.amount = amount
-        self.currency = currency
-    
-    def __lt__(self, other):
-        if self.currency != other.currency:
-            raise ValueError("Can't compare different currencies!")
-        return self.amount < other.amount
-
-# Now we can compare money naturally
-usd1 = Money(10, "USD")
-usd2 = Money(20, "USD")
-print(usd1 < usd2)  # True - works like you'd expect!
-```
-
-This is particularly useful because:
-1. It makes your code more readable (writing `price1 < price2` is clearer than calling comparison methods directly)
-2. It allows your objects to work with Python's built-in functions and methods that use these operators
-3. It makes your custom objects behave consistently with Python's built-in types
-
-Understanding this system helps you:
-- Create more intuitive interfaces for your custom classes
-- Better understand how Python works under the hood
-- Debug comparison-related issues in your code
-- Write more Pythonic code that follows the language's conventions
-
 # "Pythonic" and "idiomatic" code 
 
 Both refer to writing code that follows the natural style and philosophy of Python, but let's understand them in more depth.
@@ -736,6 +668,7 @@ def process_numbers():
     
     return numbers
 ```
+Without `continue` it will give a error by trying to run `int(value)` for invalid numbers. 
 
 ## 5. Input Validation Pattern:
 Here's a robust pattern for input validation that demonstrates several while loop concepts:
@@ -794,4 +727,698 @@ i = 0
 while i < 5:
     print(i)
     i += 1    # Don't forget to update the loop variable!
+```
+
+# Break, Continue with try/except/finally statements in Loops
+
+Let me help clarify how `continue` behaves differently in a regular `if` statement versus inside a `try/except/finally` block. This is a subtle but important distinction in Python's flow control.
+
+Let's analyze both scenarios:
+
+1. First, let's look at `continue` in a regular `if` statement:
+```python
+while condition:
+    if some_condition:
+        continue    # Immediately jumps to the next iteration
+    print("This won't execute if continue runs")
+```
+
+2. Now, let's examine `continue` in a `try/except/finally` block:
+```python
+while condition:
+    try:
+        if error_occurs:
+            continue    # Won't jump to next iteration yet!
+    except Error:
+        # Handle error
+    finally:
+        print("This WILL execute even if continue runs")
+    
+    print("This won't execute if continue runs")
+```
+
+The key difference lies in how Python handles the `finally` block. The `finally` block is guaranteed to execute even when:
+- We hit a `continue` statement
+- We hit a `break` statement
+- We hit a `return` statement
+- An exception occurs
+
+Let's break down your specific example:
+```python
+a = 0
+b = 2
+
+while a < 3:
+    print('-------------')
+    a += 1
+    b -= 1
+    try:
+        res = a / b
+    except ZeroDivisionError:
+        print('{0}, {1} - division by 0'.format(a, b))
+        res = 0
+        continue    # This continue won't take effect immediately
+    finally:
+        print('{0}, {1} - always executes'.format(a, b))  # This will run!
+        
+    print('{0}, {1} - main loop'.format(a, b))
+```
+
+Let's trace the execution when b equals 0:
+1. We enter the try block
+2. Division by zero occurs
+3. We catch the exception in the except block
+4. We set res = 0 and hit continue
+5. BUT before the continue can send us to the next iteration, Python ensures the finally block executes
+6. After the finally block completes, then the continue takes effect
+7. The last print statement is skipped
+
+Here's a clearer example to demonstrate this behavior:
+```python
+def demonstrate_continue_behavior():
+    i = 0
+    while i < 3:
+        print(f"\nIteration {i}")
+        try:
+            print("Try block start")
+            if i == 1:
+                print("About to continue...")
+                continue
+        except Exception:
+            print("Except block")
+        finally:
+            print("Finally block - ALWAYS executes!")
+            
+        print("Main loop - only executes if continue wasn't called")
+        i += 1
+
+demonstrate_continue_behavior()
+```
+
+This demonstrates an important principle in Python: the `finally` block is guaranteed to execute no matter what. This guarantee is stronger than the immediate jump behavior of `continue`. Think of it like this:
+- A regular `continue` is like saying "skip to the next iteration now"
+- A `continue` in a try block is like saying "skip to the next iteration, but first make sure we clean up properly"
+
+This behavior is particularly useful when you need to ensure certain cleanup code always runs, such as:
+- Closing files
+- Releasing locks
+- Cleaning up resources
+- Logging completion status
+
+# Custom Classes
+
+
+Let me help you understand Python's custom classes by breaking down the key concepts and explaining how they work together. I'll walk you through the core ideas and show how Python's special methods make classes more powerful and intuitive to use.
+
+First, let's understand what a class is and how to create a basic one:
+
+```python
+class Rectangle:
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+```
+
+The `__init__` method is a special method (also called a constructor) that initializes a new Rectangle object. When you create a new Rectangle, Python automatically calls this method. The `self` parameter refers to the instance being created.
+
+Let's explore how to add functionality through methods:
+
+```python
+class Rectangle:
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        
+    def area(self):
+        return self.width * self.height
+    
+    def perimeter(self):
+        return 2 * (self.width + self.height)
+```
+
+Now let's look at Python's special methods that make our classes behave more like built-in types. These methods let us define how our objects should work with Python's built-in functions and operators:
+
+```python
+class Rectangle:
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+    
+    def area(self):
+        return self.width * self.height
+    
+    # String representation for humans to read
+    def __str__(self):
+        return f'Rectangle (width={self.width}, height={self.height})'
+    
+    # String representation for developers/debugging
+    def __repr__(self):
+        return f'Rectangle({self.width}, {self.height})'
+    
+    # Equality comparison
+    def __eq__(self, other):
+        if isinstance(other, Rectangle):
+            return (self.width, self.height) == (other.width, other.height)
+        return False
+    
+    # Less than comparison based on area
+    def __lt__(self, other):
+        if isinstance(other, Rectangle):
+            return self.area() < other.area()
+        return NotImplemented
+```
+
+One of Python's most powerful features is its property system, which allows us to control access to attributes while maintaining a clean syntax. Here's how we can add validation to our Rectangle class:
+
+```python
+class Rectangle:
+    def __init__(self, width, height):
+        # Use None as initial values
+        self._width = None
+        self._height = None
+        # Use property setters for validation during initialization
+        self.width = width    # This calls the width.setter
+        self.height = height  # This calls the height.setter
+    
+    @property
+    def width(self):
+        """Get the rectangle's width"""
+        return self._width
+    
+    @width.setter
+    def width(self, value):
+        """Set the rectangle's width with validation"""
+        if not isinstance(value, (int, float)):
+            raise TypeError("Width must be a number")
+        if value <= 0:
+            raise ValueError("Width must be positive")
+        self._width = value
+
+    @property
+    def height(self):
+        """Get the rectangle's height"""
+        return self._height
+    
+    @height.setter
+    def height(self, value):
+        """Set the rectangle's height with validation"""
+        if not isinstance(value, (int, float)):
+            raise TypeError("Height must be a number")
+        if value <= 0:
+            raise ValueError("Height must be positive")
+        self._height = value
+```
+
+This design provides several benefits:
+1. We can validate values when they're set
+2. We can change the implementation without changing the interface
+3. We maintain a clean, intuitive syntax for users of our class
+4. We catch errors early during object creation
+
+Let's see how this works in practice:
+
+```python
+# Create a valid rectangle
+r1 = Rectangle(10, 20)
+print(r1.width)  # Prints: 10
+
+# Try to set an invalid width
+try:
+    r1.width = -5
+except ValueError as e:
+    print(e)     # Prints: Width must be positive
+
+# Try to set an invalid type
+try:
+    r1.height = "twenty"
+except TypeError as e:
+    print(e)     # Prints: Height must be a number
+```
+
+# Python's class system
+
+Let's think of a class like a blueprint for creating objects. Just as a blueprint for a house contains specifications for what the house will have (rooms, windows) and what you can do in it (enter through doors, cook in the kitchen), a class contains specifications for what data it will hold and what actions it can perform.
+
+First, let's clarify these key terms:
+
+## Class:
+A class is the blueprint or template that defines what properties and behaviors the objects will have. For example:
+```python
+class Car:
+    def __init__(self, color, model):
+        self.color = color    # This is a property
+        self.model = model    # This is also a property
+        
+    def drive(self):         # This is a method
+        return f"The {self.color} {self.model} is driving"
+```
+
+## Instance:
+An instance is a specific object created from a class. If a class is the blueprint, an instance is the actual house built from that blueprint. For example:
+```python
+my_car = Car("red", "Toyota")  # my_car is an instance of the Car class
+```
+
+## Attributes:
+Attributes are all the things that belong to a class or instance. There are two types:
+- Properties (data attributes): These store data and are not callable. When we say "not callable," it means you can't use parentheses to call them like functions. For example:
+  ```python
+  my_car.color        # This works - accessing a property
+  my_car.color()      # This fails - can't call a property
+  ```
+- Methods (function attributes): These are functions that belong to the class and are callable. For example:
+  ```python
+  my_car.drive()      # This works - calling a method
+  ```
+
+## Self:
+`self` refers to the instance being worked with. It's automatically passed as the first argument to instance methods. Think of it as a way for the method to know which specific instance it's operating on.
+
+## Parameters vs Arguments:
+- Parameters are the variables listed in the method definition
+- Arguments are the actual values passed to the method
+```python
+def __init__(self, color, model):   # color and model are parameters
+    self.color = color
+
+my_car = Car("red", "Toyota")       # "red" and "Toyota" are arguments
+```
+
+A diagram to visualize these relationships:
+
+```mermaid
+classDiagram
+    class Class {
+        +Class Attributes
+        +Class Methods
+        Creates Instances
+    }
+
+    class Instance {
+        +Instance Attributes
+        +Instance Methods
+        Created from Class
+    }
+
+    class Attributes {
+        Properties
+        Methods
+    }
+
+    class Properties {
+        Data values
+        Not callable
+        Accessed directly
+    }
+
+    class Methods {
+        Function objects
+        Callable with ()
+        Can have parameters
+    }
+
+    Class --> Instance : creates
+    Class --> Attributes : has
+    Instance --> Attributes : has
+    Attributes --> Properties : includes
+    Attributes --> Methods : includes
+```
+
+To further illustrate these concepts, let's see them all working together in a practical example:
+
+```python
+class BankAccount:
+    # Class attribute - shared by all instances
+    bank_name = "Python National Bank"
+    
+    def __init__(self, account_holder, balance):
+        # Instance properties
+        self.account_holder = account_holder  # Property
+        self._balance = balance              # Protected property
+        
+    @property
+    def balance(self):                       # Property with getter
+        return self._balance
+        
+    def deposit(self, amount):               # Instance method
+        if amount > 0:
+            self._balance += amount
+            return f"Deposited ${amount}"
+    
+    @classmethod
+    def get_bank_name(cls):                  # Class method
+        return cls.bank_name
+```
+
+In this example:
+1. `BankAccount` is the class (blueprint)
+2. `bank_name` is a class attribute (shared by all instances)
+3. `account_holder` and `_balance` are properties (instance attributes)
+4. `deposit` is a method (instance method)
+5. `balance` is a property with a getter (using the @property decorator)
+6. `get_bank_name` is a class method (can be called on the class itself)
+
+When we create and use an instance:
+```python
+# Creating an instance
+account = BankAccount("John", 1000)
+
+# Accessing properties
+print(account.account_holder)    # Property access
+print(account.balance)          # Property with getter
+
+# Calling methods
+account.deposit(500)            # Method call
+
+# Accessing class attribute
+print(BankAccount.bank_name)    # Class attribute access
+```
+
+# Python's comparison system
+
+Let me explain this interesting behavior in Python's comparison system. This is a great example of how Python tries to make developers' lives easier through smart language design.
+
+When you write `r1 > r2`, Python follows a specific process to determine how to handle this comparison. Here's what happens under the hood:
+
+1. First, Python looks for a `__gt__` (greater than) method in `r1`'s class. In this case, we haven't defined one, so it's not found.
+
+2. Instead of immediately giving up, Python employs what's called "reflection" or "mirroring" of comparison operators. It knows that "greater than" and "less than" are mathematical opposites, so:
+   ```python
+   a > b  is equivalent to  b < a
+   ```
+
+3. So Python automatically tries to call `r2.__lt__(r1)` (less than) instead. Since we did define the `__lt__` method, this works!
+
+This is why the following two comparisons give consistent results:
+```python
+r1 > r2  # Python translates this to: r2.__lt__(r1)
+r2 < r1  # Direct call to: r2.__lt__(r1)
+```
+
+Let's look at our `__lt__` implementation to understand why this works mathematically:
+```python
+def __lt__(self, other):
+    if isinstance(other, Rectangle):
+        return self.area() < other.area()
+    else:
+        return NotImplemented
+```
+
+When we do `r1 > r2`, Python effectively asks: "Is r2 less than r1?" using this same method.
+
+This automatic reflection is part of Python's "rich comparison" system, which includes several pairs of reflected operators:
+- `>` reflects to `<`
+- `>=` reflects to `<=`
+- `<` reflects to `>`
+- `<=` reflects to `>=`
+
+This system helps reduce the amount of code we need to write. Instead of implementing both `__lt__` and `__gt__`, we can often implement just one and let Python handle the reflection automatically.
+
+However, it's important to note that while Python provides this convenient behavior, you might sometimes want to implement both methods explicitly if:
+1. The comparison logic isn't perfectly symmetric
+2. You want to optimize performance for both operations
+3. You need to handle special cases differently for each direction of comparison
+
+This reflection system is a great example of Python's "batteries included" philosophy - it provides helpful features that make development more efficient while still allowing developers to override the default behavior when needed.
+
+
+# "special methods" or "magic methods" system
+
+
+When you write `x < y`, Python actually converts this into a method call `x.__lt__(y)`. The `__lt__` is a special method name that stands for "less than". This is part of Python's data model that allows objects to define how they behave with various operators.
+
+Let's break this down with a practical example:
+
+```python
+class Temperature:
+    def __init__(self, celsius):
+        self.celsius = celsius
+    
+    def __lt__(self, other):
+        # This method is called when we use < operator
+        print(f"Comparing {self.celsius}°C with {other.celsius}°C")
+        return self.celsius < other.celsius
+
+# Creating two temperature objects
+temp1 = Temperature(20)
+temp2 = Temperature(25)
+
+# These two lines do exactly the same thing:
+result1 = temp1 < temp2           # Using the < operator
+result2 = temp1.__lt__(temp2)     # Direct method call
+```
+
+This system is part of a broader concept in Python called "operator overloading," where there's a whole family of special methods for different operators:
+
+```python
+# Common comparison operators and their method equivalents
+x < y    →   x.__lt__(y)      # less than
+x <= y   →   x.__le__(y)      # less than or equal to
+x == y   →   x.__eq__(y)      # equal to
+x != y   →   x.__ne__(y)      # not equal to
+x > y    →   x.__gt__(y)      # greater than
+x >= y   →   x.__ge__(y)      # greater than or equal to
+```
+
+The beauty of this system is that it allows you to define how your custom objects should behave with standard Python operators. For example, if you're creating a class to represent money:
+
+```python
+class Money:
+    def __init__(self, amount, currency):
+        self.amount = amount
+        self.currency = currency
+    
+    def __lt__(self, other):
+        if self.currency != other.currency:
+            raise ValueError("Can't compare different currencies!")
+        return self.amount < other.amount
+
+# Now we can compare money naturally
+usd1 = Money(10, "USD")
+usd2 = Money(20, "USD")
+print(usd1 < usd2)  # True - works like you'd expect!
+```
+
+This is particularly useful because:
+1. It makes your code more readable (writing `price1 < price2` is clearer than calling comparison methods directly)
+2. It allows your objects to work with Python's built-in functions and methods that use these operators
+3. It makes your custom objects behave consistently with Python's built-in types
+
+Understanding this system helps you:
+- Create more intuitive interfaces for your custom classes
+- Better understand how Python works under the hood
+- Debug comparison-related issues in your code
+- Write more Pythonic code that follows the language's conventions
+
+# Python's special method Examples
+
+Let me explain Python's special methods (also called magic methods or dunder methods) comprehensively. These methods allow us to define how our objects behave with Python's built-in operations and functions.
+
+First, let's understand what makes these methods "special":
+1. They're surrounded by double underscores (e.g., `__init__`)
+2. Python calls them automatically in specific situations
+3. They let our custom objects work like built-in types
+
+Let me create a comprehensive class that demonstrates many special methods:
+
+```python
+class Book:
+    def __init__(self, title, author, pages, price):
+        # Constructor - called when creating new instance
+        self.title = title
+        self.author = author
+        self.pages = pages
+        self.price = price
+        self.current_page = 0
+
+    # String Representation Methods
+    def __str__(self):
+        # Called by str() and print()
+        return f"{self.title} by {self.author}"
+    
+    def __repr__(self):
+        # Called for object representation in debugger/REPL
+        return f'Book("{self.title}", "{self.author}", {self.pages}, {self.price})'
+    
+    # Comparison Methods
+    def __eq__(self, other):
+        # Called when using == operator
+        if not isinstance(other, Book):
+            return NotImplemented
+        return (self.title, self.author) == (other.title, other.author)
+    
+    def __lt__(self, other):
+        # Called when using < operator
+        if not isinstance(other, Book):
+            return NotImplemented
+        return self.price < other.price
+    
+    # Numeric Methods
+    def __add__(self, other):
+        # Called when using + operator
+        if isinstance(other, Book):
+            return self.price + other.price
+        return NotImplemented
+    
+    def __len__(self):
+        # Called when using len()
+        return self.pages
+    
+    # Container Methods
+    def __getitem__(self, page_num):
+        # Called when using square bracket notation
+        if not isinstance(page_num, int):
+            raise TypeError("Page number must be an integer")
+        if page_num < 0 or page_num >= self.pages:
+            raise IndexError("Page number out of range")
+        return f"Content of page {page_num}"
+    
+    # Iterator Methods
+    def __iter__(self):
+        # Called when using iter() or in for loops
+        self.current_page = 0
+        return self
+    
+    def __next__(self):
+        # Called when using next() or in for loops
+        if self.current_page >= self.pages:
+            raise StopIteration
+        content = f"Reading page {self.current_page}"
+        self.current_page += 1
+        return content
+    
+    # Context Manager Methods
+    def __enter__(self):
+        # Called when entering 'with' block
+        print(f"Opening {self.title}")
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Called when exiting 'with' block
+        print(f"Closing {self.title}")
+        
+    # Attribute Methods
+    def __getattr__(self, name):
+        # Called when accessing undefined attribute
+        return f"'{self.title}' has no attribute '{name}'"
+    
+    def __setattr__(self, name, value):
+        # Called when setting any attribute
+        if name == "price" and value < 0:
+            raise ValueError("Price cannot be negative")
+        super().__setattr__(name, value)
+```
+
+Let's see how to use this class and understand what each special method enables:
+
+```python
+# Creating books
+book1 = Book("Python 101", "John Doe", 200, 29.99)
+book2 = Book("Python 101", "John Doe", 200, 34.99)
+
+# String representation
+print(book1)                # Uses __str__
+print(repr(book1))         # Uses __repr__
+
+# Comparison
+print(book1 == book2)      # Uses __eq__
+print(book1 < book2)       # Uses __lt__
+
+# Numeric operations
+total_price = book1 + book2  # Uses __add__
+print(f"Total price: ${total_price}")
+
+# Length
+print(f"Number of pages: {len(book1)}")  # Uses __len__
+
+# Indexing
+print(book1[5])            # Uses __getitem__
+
+# Iteration
+for page in book1:         # Uses __iter__ and __next__
+    print(page)
+    if page.endswith("5"):
+        break
+
+# Context manager
+with book1 as b:           # Uses __enter__ and __exit__
+    print(f"Reading {b.title}")
+
+# Attribute access
+print(book1.nonexistent)   # Uses __getattr__
+try:
+    book1.price = -10     # Uses __setattr__
+except ValueError as e:
+    print(e)
+```
+
+Here's a comprehensive list of special methods by category:
+
+1. Construction and Initialization:
+```python
+__new__(cls, ...)      # Object creation
+__init__(self, ...)    # Object initialization
+__del__(self)          # Object destruction
+```
+
+2. String Representation:
+```python
+__str__(self)          # str() and print()
+__repr__(self)         # repr()
+__format__(self, spec) # format() and f-strings
+```
+
+3. Comparison Operations:
+```python
+__eq__(self, other)    # ==
+__ne__(self, other)    # !=
+__lt__(self, other)    # 
+__le__(self, other)    # <=
+__gt__(self, other)    # >
+__ge__(self, other)    # >=
+```
+
+4. Numeric Operations:
+```python
+__add__(self, other)   # +
+__sub__(self, other)   # -
+__mul__(self, other)   # *
+__truediv__(self, other)  # /
+__floordiv__(self, other) # //
+__mod__(self, other)   # %
+__pow__(self, other)   # **
+```
+
+5. Container Methods:
+```python
+__len__(self)          # len()
+__getitem__(self, key) # self[key]
+__setitem__(self, key, value) # self[key] = value
+__delitem__(self, key) # del self[key]
+__contains__(self, item) # in operator
+```
+
+6. Iterator Methods:
+```python
+__iter__(self)         # iter()
+__next__(self)         # next()
+```
+
+7. Attribute Access:
+```python
+__getattr__(self, name)    # Fallback for undefined attributes
+__getattribute__(self, name) # All attribute access
+__setattr__(self, name, value) # Setting attributes
+__delattr__(self, name)    # Deleting attributes
+```
+
+8. Context Manager:
+```python
+__enter__(self)        # with statement entry
+__exit__(self, exc_type, exc_value, traceback) # with statement exit
+```
+
+9. Callable Objects:
+```python
+__call__(self, *args, **kwargs) # Makes instance callable
 ```
